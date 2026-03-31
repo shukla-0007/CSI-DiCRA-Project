@@ -1,59 +1,64 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import xgboost as xgb
-import pandas as pd 
+import pandas as pd
 import os
 
-# 1. INITIALIZE THE APP
 app = FastAPI(title="DiCRA Compound Stress Index (CSI) API")
 
-# 2. LOAD THE TRAINED MODEL
-MODEL_PATH = "csi_model_v1.json"
+# LOAD THE NEW MASTER MODEL
+MODEL_PATH = "csi_model_v2.json"
 model = xgb.XGBClassifier()
-
 if os.path.exists(MODEL_PATH):
     model.load_model(MODEL_PATH)
 else:
-    # Fallback if running from the project root
-    model.load_model("src/csi_model_v1.json")
+    model.load_model("src/csi_model_v2.json")
 
-# 3. DEFINE THE INPUT FORMAT (What the user sends us)
 class ClimateInput(BaseModel):
     district_name: str
-    lst: float # Temperature
-    ssm: float # Soil Moisture
-    ndvi: float # Vegetation index
+    month: int       # Added Month for Crop Calendar!
+    lst: float       # Temperature
+    ssm: float       # Soil Moisture
 
-# 4. THE PREDICTION ENDPOINT
 @app.post("/predict_risk")
 async def predict_risk(data: ClimateInput):
     try:
-        # Create a single-row table for the model
-        # We must use the EXACT column names used during training
+        # Determine Crop Window based on the month
+        kharif = 1 if data.month in [8, 9] else 0
+        rabi = 1 if data.month in [1, 2] else 0
+        non_critical = 1 if data.month not in [1, 2, 8, 9] else 0
+        
+        # Calculate dynamic anomalies (In production, these come from historical DB)
+        # For the API, we use typical MP extremes: > 42C is heat, < 0.08 is drought
+        heat_anomaly = 1 if data.lst >= 42.0 else 0
+        drought_anomaly = 1 if data.ssm <= 0.08 else 0
+
         input_df = pd.DataFrame([{
             'LST': data.lst,
             'SSM': data.ssm,
-            'NDVI': data.ndvi,
-            'Heat_Anomaly': 1 if data.lst > 40 else 0, # Simple logic for the prototype
-            'Drought_Anomaly': 1 if data.ssm < 0.1 else 0,
-            'Compound_Stress': 1 if (data.lst > 40 and data.ssm < 0.1) else 0
+            'Heat_Anomaly': heat_anomaly,
+            'Drought_Anomaly': drought_anomaly,
+            'Crop_Window_Kharif_Critical': kharif,
+            'Crop_Window_Rabi_Critical': rabi,
+            'Crop_Window_Non_Critical': non_critical
         }])
 
-        # Get probability (0.0 to 1.0)
+        # Get probability
         prob = model.predict_proba(input_df)[0][1]
         
-        # Turn probability into a 1-5 Risk Tier (as per your proposal)
-        risk_tier = int(prob * 4) + 1 # Maps 0.0-1.0 to 1-5
+        # Actuarial Risk Tiers (1 to 5)
+        if prob < 0.20: risk_tier = 1
+        elif prob < 0.40: risk_tier = 2
+        elif prob < 0.60: risk_tier = 3
+        elif prob < 0.80: risk_tier = 4
+        else: risk_tier = 5
 
         return {
             "district": data.district_name,
-            "risk_score": round(float(prob), 2),
+            "month": data.month,
+            "risk_score": round(float(prob), 4),
             "risk_tier": risk_tier,
-            "recommendation": "High Risk: Advise insurance uptake" if risk_tier >= 4 else "Low Risk: Normal monitoring"
+            "recommendation": "URGENT: Parametric Payout Triggered" if risk_tier == 5 else "Safe: Normal Monitoring"
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/")
-async def root():
-    return {"message": "CSI Prediction Engine is Online"} 
+        raise HTTPException(status_code=500, detail=str(e)) 
