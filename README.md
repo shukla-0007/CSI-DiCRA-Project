@@ -3,7 +3,7 @@
 # 🌍 MP-CSI: National Climate Stack for Madhya Pradesh
 **A Spatiotemporal Machine Learning Pipeline for Parametric Crop Insurance**
 
-### 🚀 [Live Dashboard Link](https://YOUR-STREAMLIT-URL.streamlit.app)
+### 🚀 [Live Dashboard Link](https://csi-dicra-project-sdtgvwqqobb7evmvetud5g.streamlit.app/) 
 
 ## 📌 Project Overview
 This project solves the **"Basis Risk"** failure in India's PMFBY insurance scheme. Current models use area-average rainfall, which misses localized compound heat-drought shocks. 

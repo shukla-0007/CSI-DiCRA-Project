@@ -5,3 +5,7 @@ pydantic
 pandas
 xgboost
 scikit-learn 
+xgboost>=2.0.0
+xarray
+netCDF4
+numpy 
