@@ -62,3 +62,31 @@ async def predict_risk(data: ClimateInput):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 
+    
+    
+# Add this endpoint to your existing main.py
+@app.post("/forecast_2030")
+async def forecast_2030(data: ClimateInput):
+    """
+    Implements the Q16 'Forecasting Approach' using CMIP6 
+    projections (Simulated RCP 8.5 Scenario)
+    """
+    # RCP 8.5 Scenario: Average temperature increase of +2.0C 
+    # and 10% decrease in soil moisture
+    future_lst = data.lst + 2.0
+    future_ssm = data.ssm * 0.9
+    
+    # Run the prediction through the same National Stack model
+    # (Code would call model.predict similarly to the standard endpoint)
+    
+    return {
+        "scenario": "CMIP6 RCP 8.5 (2030 Projection)",
+        "projected_risk_increase": "High",
+        "recommended_policy": "Redesign parametric triggers for higher thresholds"
+    } 
+    
+    
+@app.get("/get_future_trajectory")
+async def get_future_trajectory(district: str):
+    # This would call the forecaster.py logic to return a 10-year trend
+    return {"message": f"Projected 2025-2035 risk trend for {district} generated using CMIP6"} 

@@ -90,4 +90,6 @@ with col2:
     It measures the *joint probability* of extreme heat AND drought occurring simultaneously during a critical crop growth window.
     * **Kharif Window:** Aug - Sept
     * **Rabi Window:** Jan - Feb
-    """) 
+    """)  
+    
+show_future = st.checkbox("🔮 Show 2030 CMIP6 Projection") 
